@@ -45,7 +45,7 @@ public class Auction {
     @Column(nullable = false)
     private AuctionStatus status = AuctionStatus.ACTIVE;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column
