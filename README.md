@@ -40,103 +40,131 @@ Built as a semester project for the **Web Architecture Course**.
 └──────────────┘   └──────────────┘   └──────────────┘
 ```
 
-### Component Stack
-* **Frontend:** React.js (Vite), Vanilla CSS Glassmorphism, React Router, STOMP.js / SockJS WebSockets, React Hot Toast.
-* **Backend Microservices:** Java 17, Spring Boot 3.2, Spring Security (JWT), Spring Data JPA, PostgreSQL Driver, WebSockets (STOMP).
-* **Gateway & Web Server:** Nginx.
-* **Databases:** PostgreSQL 15 (isolated DBs per service: `auth_db`, `auction_db`, `wallet_db`).
-* **Containerization:** Docker & Docker Compose.
+---
+
+## 🚀 How to Run the Project Properly (Complete Guide)
+
+### Option A: Standard One-Command Docker Run (Recommended)
+
+1. **Start Docker Desktop:**
+   Ensure Docker Desktop is launched and shows **"Engine running"** in the bottom left corner.
+
+2. **Run Docker Compose:**
+   Open a terminal in the root `EBID` project directory and run:
+   ```bash
+   docker compose up --build
+   ```
+
+3. **Access the App:**
+   Open your browser to: **[http://localhost](http://localhost)**
 
 ---
 
-## 🚀 Quick Start (One-Command Running via Docker)
+### Option B: Frontend Developer Workflow (For Maliha — No Docker Needed)
 
-### 1. Prerequisites
-- **Docker Desktop** installed and running.
-- **WSL 2 Engine** enabled in Windows (Run `wsl --install --no-distribution` in PowerShell as Administrator if not already installed).
+If you are working on the React UI and want fast live-reloading (HMR) without compiling Java microservices or running Docker:
 
-### 2. Launch the Application
-Open your terminal in the project root directory and run:
+1. **Navigate to the frontend folder:**
+   ```bash
+   cd frontend
+   ```
 
-```bash
-docker compose up --build
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-> **Note:** The initial build takes 3–5 minutes as Maven downloads base images and project dependencies. Subsequent launches take under 10 seconds.
+3. **Start Vite Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-### 3. Open in Browser
-Navigate to:
-👉 **[http://localhost](http://localhost)**
+4. **Access Dev Frontend:**
+   Open your browser at **[http://localhost:5173](http://localhost:5173)**.  
+   > `vite.config.js` is already configured to automatically proxy `/api/auth`, `/api/auctions`, `/api/wallet`, and `/ws` to the backend services!
 
 ---
 
-## 🔧 Local Development Setup (Manual / Standalone)
+## 🎓 Troubleshooting Campus / University Wi-Fi (IUT Network Issues)
 
-If you wish to run the React frontend locally with Hot Module Replacement (HMR) while using the containerized backend microservices:
+If you are on campus Wi-Fi (e.g., **IUT Wi-Fi / Eduroam**) and experience container build failures or sign-in errors, follow these solutions:
 
-### 1. Start Backend Microservices via Docker
-```bash
-docker compose up -d db auth-service wallet-service auction-service gateway
-```
+### ❌ Issue 1: `repo.maven.apache.org` or `registry.npmjs.org` Connection Timed Out
+Campus firewalls often block or restrict raw DNS calls from Docker containers to external package repositories.
 
-### 2. Start Frontend Dev Server
-```bash
-cd frontend
-npm install
-npm run dev
-```
+* **Solution 1 — Use Mobile Hotspot (Fastest):**  
+  Connect your computer to a **Mobile Hotspot** or home Wi-Fi for the first `docker compose up --build` or `npm install`. Once packages are cached, you can switch back to campus Wi-Fi.
 
-Open **[http://localhost:5173](http://localhost:5173)** in your browser. Requests are automatically proxied to backend services via `vite.config.js`.
+* **Solution 2 — Add Google DNS to Docker Desktop Settings:**  
+  1. Open **Docker Desktop Settings** (⚙️ gear icon).  
+  2. Select **Docker Engine** from the left menu.  
+  3. Add `"dns": ["8.8.8.8", "1.1.1.1"]` to the JSON configuration:
+     ```json
+     {
+       "builder": {
+         "gc": {
+           "defaultKeepStorage": "20GB",
+           "enabled": true
+         }
+       },
+       "dns": [
+         "8.8.8.8",
+         "1.1.1.1"
+       ]
+     }
+     ```
+  4. Click **Apply & Restart**.
+
+---
+
+### ❌ Issue 2: `failed to connect to docker API npipe:////./pipe/dockerDesktopLinuxEngine`
+This error means **Docker Desktop is not currently running** on your laptop.
+
+* **Solution:**
+  1. Search for **Docker Desktop** in your Windows Start Menu and click to launch it.
+  2. Wait ~1-2 minutes until the whale icon in your system tray stops animating and shows **Engine running**.
+  3. Re-run `docker compose up --build`.
+
+---
+
+### ❌ Issue 3: "Cannot Sign In / Sign Up" on Frontend
+If clicking Login or Sign Up returns an error or fails to respond:
+
+* **Cause:** The `auth-service` microservice is not reachable or database connection failed.
+* **Solution:**
+  1. Ensure containers are running by typing: `docker ps`. You should see `ebid-auth-service` running on port `8081`.
+  2. Check Auth Service logs:
+     ```bash
+     docker compose logs auth-service
+     ```
+  3. If using local `npm run dev` (Port 5173), ensure the backend Docker containers are running (`docker compose up -d`).
 
 ---
 
 ## 📡 API Reference & Endpoints
 
 ### 1. Auth Service (`/api/auth`)
-| Method | Endpoint | Description | Sample Body / Parameters |
-|--------|----------|-------------|--------------------------|
-| `POST` | `/auth/register` | Register a new user | `{ "username": "bello", "email": "bello@ebid.com", "password": "password123", "role": "BIDDER" }` |
-| `POST` | `/auth/login` | Authenticate user & receive JWT | `{ "username": "bello", "password": "password123" }` |
+| Method | Endpoint | Description | Sample Body |
+|--------|----------|-------------|-------------|
+| `POST` | `/auth/register` | Register new user | `{ "username": "maliha", "email": "maliha@ebid.com", "password": "password123", "role": "SELLER" }` |
+| `POST` | `/auth/login` | Authenticate & get JWT | `{ "username": "maliha", "password": "password123" }` |
 | `GET` | `/auth/validate` | Verify JWT token validity | Header: `Authorization: Bearer <token>` |
-| `GET` | `/auth/users/{id}` | Fetch public user profile | None |
 
 ### 2. Wallet Service (`/api/wallet`)
-| Method | Endpoint | Description | Sample Body / Parameters |
-|--------|----------|-------------|--------------------------|
-| `GET` | `/wallet/{userId}` | Get wallet balance & frozen funds | None |
-| `POST` | `/wallet/deposit` | Add funds to wallet | `{ "userId": 1, "amount": 500.00 }` |
-| `POST` | `/wallet/freeze` | Freeze funds for an active bid | `{ "userId": 1, "amount": 150.00, "description": "Bid freeze" }` |
-| `POST` | `/wallet/release` | Unfreeze funds when outbid | `{ "userId": 1, "amount": 150.00, "description": "Outbid refund" }` |
-| `POST` | `/wallet/payout` | Transfer winner funds to seller | `{ "fromUserId": 1, "toUserId": 2, "amount": 150.00 }` |
-| `GET` | `/wallet/{userId}/transactions` | Full ledger transaction history | None |
+| Method | Endpoint | Description | Sample Body |
+|--------|----------|-------------|-------------|
+| `GET` | `/wallet/{userId}` | Get balance & frozen funds | None |
+| `POST` | `/wallet/deposit` | Add funds | `{ "userId": 1, "amount": 500.00 }` |
+| `POST` | `/wallet/freeze` | Freeze funds for active bid | `{ "userId": 1, "amount": 150.00 }` |
 
 ### 3. Auction Service (`/api/auctions`)
-| Method | Endpoint | Description | Sample Body / Parameters |
-|--------|----------|-------------|--------------------------|
-| `GET` | `/auctions` | List active live auctions | None |
-| `GET` | `/auctions/{id}` | Get auction details by ID | None |
-| `POST` | `/auctions` | Create new auction (Seller) | `{ "title": "Rolex Submariner", "description": "Mint condition", "sellerId": 2, "startingPrice": 2500, "endTime": "2026-12-31T23:59:59", "category": "Jewelry" }` |
-| `POST` | `/auctions/{id}/bid` | Place a bid on auction | `{ "bidderId": 1, "amount": 2600.00 }` |
-| `GET` | `/auctions/{id}/bids` | Get bid history for auction | None |
-
-### 4. WebSockets (`/ws`)
-* **Endpoint:** `ws://localhost/ws` (STOMP via SockJS)
-* **Topic Subscription:** `/topic/auction/{id}`
-* **Payload Broadcast:** `{ "auctionId": 1, "currentBid": 2600.00, "bidderId": 1, "timestamp": "..." }`
+| Method | Endpoint | Description | Sample Body |
+|--------|----------|-------------|-------------|
+| `GET` | `/auctions` | List active auctions | None |
+| `POST` | `/auctions` | Create auction (Seller) | `{ "title": "Laptop", "startingPrice": 500, "sellerId": 1, "endTime": "2026-12-31T23:59:59" }` |
+| `POST` | `/auctions/{id}/bid` | Place a bid (Bidder) | `{ "bidderId": 2, "amount": 550.00 }` |
 
 ---
 
-## 🛠️ Troubleshooting & Gotchas
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| **`docker-compose: command not found`** | Legacy docker-compose CLI syntax | Use `docker compose up --build` (with a space) |
-| **`failed to connect to docker API 500`** | WSL2 engine not running in Docker Desktop | Run `wsl --install --no-distribution` in PowerShell (Admin), restart PC, then reopen Docker Desktop |
-| **`value too long for type character varying(255)`** | Long Base64 Image URLs | Fixed in `Auction.java` (`@Column(columnDefinition = "TEXT")`) & DB column altered to `TEXT` |
-| **Blank White/Black Screen on React Load** | SockJS looking for legacy Node `global` variable in browser | Fixed via global polyfill script in `index.html` and `define: { global: 'window' }` in `vite.config.js` |
-
----
-
-## 📜 Repository & Source Code
-
+## 📜 Source Code & Repository
 * **GitHub Repository:** [https://github.com/01329582993/EBID](https://github.com/01329582993/EBID)
