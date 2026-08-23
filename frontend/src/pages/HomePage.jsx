@@ -4,17 +4,6 @@ import { getActiveAuctions } from '../api';
 import AuctionTimer from '../components/AuctionTimer';
 import toast from 'react-hot-toast';
 
-const CATEGORY_ICONS = {
-  Electronics: '💻',
-  Fashion: '👗',
-  Art: '🎨',
-  Collectibles: '🏆',
-  Vehicles: '🚗',
-  Jewelry: '💎',
-  Sports: '⚽',
-  General: '📦',
-};
-
 export default function HomePage() {
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +79,7 @@ export default function HomePage() {
             className={`tab-btn ${filter === cat ? 'active' : ''}`}
             onClick={() => setFilter(cat)}
           >
-            {CATEGORY_ICONS[cat] || '📦'} {cat}
+            {cat}
           </button>
         ))}
       </div>
@@ -100,41 +89,47 @@ export default function HomePage() {
         <div className="spinner" />
       ) : filtered.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">🔍</div>
           <div className="empty-state-title">No auctions found</div>
           <p>Check back later or try a different category</p>
         </div>
       ) : (
         <div className="auctions-grid">
-          {filtered.map(auction => (
-            <div
-              key={auction.id}
-              id={`auction-card-${auction.id}`}
-              className="auction-card"
-              onClick={() => navigate(`/auction/${auction.id}`)}
-            >
-              <div className="auction-card-img">
-                {auction.imageUrl
-                  ? <img src={auction.imageUrl} alt={auction.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : CATEGORY_ICONS[auction.category || 'General'] || '📦'
-                }
-              </div>
-              <div className="auction-card-body">
-                <div className="auction-card-category">{auction.category || 'General'}</div>
-                <div className="auction-card-title">{auction.title}</div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-                  {auction.description?.slice(0, 80)}{auction.description?.length > 80 ? '...' : ''}
-                </p>
-                <div className="auction-bid-row">
-                  <div>
-                    <div className="bid-label">Current Bid</div>
-                    <div className="bid-amount">${parseFloat(auction.currentBid || auction.startingPrice).toFixed(2)}</div>
+          {filtered.map(auction => {
+            const category = auction.category || 'General';
+            return (
+              <div
+                key={auction.id}
+                id={`auction-card-${auction.id}`}
+                className="auction-card"
+                onClick={() => navigate(`/auction/${auction.id}`)}
+              >
+                <div className="auction-card-img">
+                  {auction.imageUrl
+                    ? <img src={auction.imageUrl} alt={auction.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : (
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', color: 'var(--accent-gold)', opacity: 0.5 }}>
+                        {category.charAt(0).toUpperCase()}
+                      </span>
+                    )
+                  }
+                </div>
+                <div className="auction-card-body">
+                  <div className="auction-card-category">{category}</div>
+                  <div className="auction-card-title">{auction.title}</div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+                    {auction.description?.slice(0, 80)}{auction.description?.length > 80 ? '...' : ''}
+                  </p>
+                  <div className="auction-bid-row">
+                    <div>
+                      <div className="bid-label">Current Bid</div>
+                      <div className="bid-amount">${parseFloat(auction.currentBid || auction.startingPrice).toFixed(2)}</div>
+                    </div>
+                    <AuctionTimer endTime={auction.endTime} status={auction.status} />
                   </div>
-                  <AuctionTimer endTime={auction.endTime} status={auction.status} />
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
