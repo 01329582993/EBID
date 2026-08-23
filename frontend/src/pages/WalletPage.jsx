@@ -21,7 +21,6 @@ export default function WalletPage() {
   const [targetUserId, setTargetUserId] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Safely capture user ID from auth context regardless of key naming
   const currentUserId = user?.userId || user?.id || user?._id;
 
   const loadWallet = useCallback(async (id) => {
@@ -53,7 +52,7 @@ export default function WalletPage() {
       }
     } catch {
       setTransactions([]);
-      /* silent catch for empty/uninitialized transaction logs */
+    
     }
   }, []);
 
@@ -66,7 +65,6 @@ export default function WalletPage() {
       loadWallet(currentUserId);
       loadTransactions(currentUserId);
 
-      // Auto-poll every 5 seconds so external Postman actions reflect automatically
       const interval = setInterval(() => {
         loadWallet(currentUserId);
         loadTransactions(currentUserId);
@@ -197,8 +195,6 @@ export default function WalletPage() {
           Refresh Data
         </button>
       </div>
-
-      {/* Balance Hero */}
       <div className="wallet-hero">
         <div className="wallet-balance-label">Available Balance</div>
         <div className="wallet-balance">
@@ -264,7 +260,7 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* Transaction History */}
+
       <div className="card">
         <div className="section-title">Transaction History</div>
         {safeTransactions.length === 0 ? (
@@ -301,7 +297,6 @@ export default function WalletPage() {
         )}
       </div>
 
-      {/* Deposit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="modal">
@@ -350,7 +345,6 @@ export default function WalletPage() {
         </div>
       )}
 
-      {/* Action Modals */}
       {activeActionModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeActionModal(); }}>
           <div className="modal">
