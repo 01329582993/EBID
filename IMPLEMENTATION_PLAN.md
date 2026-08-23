@@ -31,11 +31,14 @@ This document presents the **Feature Audit** and **4-Person Engineering Team Wor
 
 ---
 
-### 👤 Member 2: Zinnia (Lead — Wallet & ACID Transactions) — [ASSIGNED / PENDING ⏳]
-- [ ] Refactor `WalletController` to use DTOs (`DepositRequestDto`, `FreezeRequestDto`, `ReleaseRequestDto`, `PayoutRequestDto`).
-- [ ] Annotate balance mutation methods (`deposit`, `freeze`, `release`, `payout`) with `@Transactional(rollbackFor = Exception.class)`.
-- [ ] Implement Pessimistic Locking (`@Lock(LockModeType.PESSIMISTIC_WRITE)`) on `findByUserId` in `WalletRepository`.
-- [ ] Add composite database indexing on `Wallet` (`userId`) and `Transaction` (`userId, createdAt DESC`).
+### 👤 Member 2: Zinnia (Lead — Wallet & ACID Transactions) — [COMPLETED ✅]
+- [x] Refactor `WalletController` to use DTOs (`DepositRequestDto`, `FreezeRequestDto`, `ReleaseRequestDto`, `PayoutRequestDto`).
+- [x] Annotate balance mutation methods (`deposit`, `freeze`, `release`, `payout`) with `@Transactional(rollbackFor = Exception.class)`.
+- [x] Implement Pessimistic Locking (`@Lock(LockModeType.PESSIMISTIC_WRITE)`) on `findByUserIdWithLock` in `WalletRepository`.
+- [x] Add composite database indexing on `Wallet` (`userId`) and `Transaction` (`userId, createdAt DESC`).
+- [x] Add `GlobalExceptionHandler` to wallet-service for consistent JSON error responses.
+- [x] Add `spring-boot-starter-validation` dependency to `wallet-service/pom.xml`.
+- [x] Deadlock prevention: ordered lock acquisition in `processPayout()` (bonus — beyond plan).
 
 ---
 
