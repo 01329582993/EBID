@@ -3,6 +3,7 @@ package com.ebid.wallet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -20,8 +21,23 @@ public class WalletController {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    // Used by the read-only GET endpoint — no lock needed, a stale-by-a-few-ms
+    // read of your own balance is harmless and shouldn't block other writers.
     private Wallet getOrCreateWallet(Long userId) {
         return walletRepository.findByUserId(userId).orElseGet(() -> {
+            Wallet w = new Wallet();
+            w.setUserId(userId);
+            w.setBalance(BigDecimal.ZERO);
+            w.setFrozenBalance(BigDecimal.ZERO);
+            return walletRepository.save(w);
+        });
+    }
+
+    // Used by every write endpoint below (deposit/freeze/release/payout) so
+    // the read-modify-write on balance/frozenBalance is safe under
+    // concurrent requests for the same user.
+    private Wallet getOrCreateWalletForUpdate(Long userId) {
+        return walletRepository.findByUserIdForUpdate(userId).orElseGet(() -> {
             Wallet w = new Wallet();
             w.setUserId(userId);
             w.setBalance(BigDecimal.ZERO);
@@ -41,6 +57,7 @@ public class WalletController {
         return ResponseEntity.ok(response);
     }
 
+    @Transactional
     @PostMapping("/deposit")
     public ResponseEntity<?> deposit(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
@@ -50,7 +67,7 @@ public class WalletController {
             return ResponseEntity.badRequest().body(Map.of("error", "Amount must be positive"));
         }
 
-        Wallet wallet = getOrCreateWallet(userId);
+        Wallet wallet = getOrCreateWalletForUpdate(userId);
         wallet.setBalance(wallet.getBalance().add(amount));
         walletRepository.save(wallet);
 
@@ -64,13 +81,14 @@ public class WalletController {
         return ResponseEntity.ok(Map.of("message", "Deposited successfully", "newBalance", wallet.getBalance()));
     }
 
+    @Transactional
     @PostMapping("/freeze")
     public ResponseEntity<?> freeze(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
         BigDecimal amount = new BigDecimal(body.get("amount").toString());
         String description = body.getOrDefault("description", "Bid freeze").toString();
 
-        Wallet wallet = getOrCreateWallet(userId);
+        Wallet wallet = getOrCreateWalletForUpdate(userId);
         BigDecimal available = wallet.getBalance().subtract(wallet.getFrozenBalance());
 
         if (available.compareTo(amount) < 0) {
@@ -91,13 +109,14 @@ public class WalletController {
         return ResponseEntity.ok(Map.of("message", "Funds frozen", "frozenBalance", wallet.getFrozenBalance()));
     }
 
+    @Transactional
     @PostMapping("/release")
     public ResponseEntity<?> release(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
         BigDecimal amount = new BigDecimal(body.get("amount").toString());
         String description = body.getOrDefault("description", "Bid release").toString();
 
-        Wallet wallet = walletRepository.findByUserId(userId).orElse(null);
+        Wallet wallet = walletRepository.findByUserIdForUpdate(userId).orElse(null);
 
         if (wallet == null) {
             return ResponseEntity.notFound().build();
@@ -118,16 +137,34 @@ public class WalletController {
         return ResponseEntity.ok(Map.of("message", "Funds released"));
     }
 
+    @Transactional
     @PostMapping("/payout")
     public ResponseEntity<?> payout(@RequestBody Map<String, Object> body) {
         Long fromUserId = Long.valueOf(body.get("fromUserId").toString());
         Long toUserId = Long.valueOf(body.get("toUserId").toString());
         BigDecimal amount = new BigDecimal(body.get("amount").toString());
 
-        Wallet fromWallet = walletRepository.findByUserId(fromUserId).orElse(null);
-        if (fromWallet == null) {
+        // Lock both wallets in a fixed order (by userId) rather than
+        // "from then to" — if two payouts ever ran concurrently involving
+        // the same pair of users in opposite directions, locking in
+        // request order could deadlock (A waits for B while B waits for A).
+        // Always locking the lower userId first makes that impossible.
+        Long firstId = fromUserId < toUserId ? fromUserId : toUserId;
+        Long secondId = fromUserId < toUserId ? toUserId : fromUserId;
+
+        Wallet firstWallet = walletRepository.findByUserIdForUpdate(firstId).orElse(null);
+        if (firstId.equals(fromUserId) && firstWallet == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Bidder wallet not found"));
         }
+        Wallet secondWallet = secondId.equals(toUserId)
+                ? getOrCreateWalletForUpdate(secondId)
+                : walletRepository.findByUserIdForUpdate(secondId).orElse(null);
+        if (secondId.equals(fromUserId) && secondWallet == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Bidder wallet not found"));
+        }
+
+        Wallet fromWallet = firstId.equals(fromUserId) ? firstWallet : secondWallet;
+        Wallet toWallet = firstId.equals(toUserId) ? firstWallet : secondWallet;
 
         // Deduct from buyer's balance and frozen balance
         fromWallet.setFrozenBalance(fromWallet.getFrozenBalance().subtract(amount));
@@ -138,7 +175,6 @@ public class WalletController {
         walletRepository.save(fromWallet);
 
         // Credit to seller
-        Wallet toWallet = getOrCreateWallet(toUserId);
         toWallet.setBalance(toWallet.getBalance().add(amount));
         walletRepository.save(toWallet);
 

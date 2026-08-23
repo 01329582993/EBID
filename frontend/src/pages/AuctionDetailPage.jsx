@@ -53,7 +53,7 @@ export default function AuctionDetailPage() {
           const update = JSON.parse(msg.body);
           if (update.status === 'ENDED') {
             setAuction(prev => prev ? { ...prev, status: 'ENDED', currentBid: update.finalPrice } : prev);
-            toast('🏁 Auction has ended!', { icon: '🔔' });
+            toast('Auction has ended.');
           } else {
             setAuction(prev => prev ? { ...prev, currentBid: update.currentBid } : prev);
             setBidAmount((parseFloat(update.currentBid) + 1).toFixed(2));
@@ -61,7 +61,7 @@ export default function AuctionDetailPage() {
             setTimeout(() => setFlash(false), 1000);
             loadBids();
             if (update.bidderId !== user?.userId) {
-              toast('🔥 New bid placed!', { duration: 2000 });
+              toast('New bid placed.', { duration: 2000 });
             }
           }
         });
@@ -81,7 +81,7 @@ export default function AuctionDetailPage() {
     setPlacing(true);
     try {
       await placeBid(id, { bidderId: user.userId, amount: parseFloat(bidAmount) });
-      toast.success(`Bid of $${bidAmount} placed! 🎉`);
+      toast.success(`Bid of $${bidAmount} placed.`);
       loadAuction();
       loadBids();
     } catch (err) {
@@ -96,6 +96,7 @@ export default function AuctionDetailPage() {
   const currentBid = parseFloat(auction.currentBid || auction.startingPrice);
   const isActive = auction.status === 'ACTIVE';
   const canBid = user && user.role === 'BIDDER' && String(user.userId) !== String(auction.sellerId) && isActive;
+  const categoryInitial = (auction.category || 'General').charAt(0).toUpperCase();
 
   return (
     <div className="main-content">
@@ -107,10 +108,14 @@ export default function AuctionDetailPage() {
         {/* Left: Auction Info */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Image */}
-          <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'linear-gradient(135deg,#1e1b4b,#312e81)', minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem' }}>
+          <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'var(--bg-secondary)', border: '1px solid var(--border)', minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {auction.imageUrl
               ? <img src={auction.imageUrl} alt={auction.title} style={{ width: '100%', objectFit: 'cover' }} />
-              : '🏆'
+              : (
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '4rem', color: 'var(--accent-gold)', opacity: 0.4 }}>
+                  {categoryInitial}
+                </span>
+              )
             }
           </div>
 
@@ -118,7 +123,7 @@ export default function AuctionDetailPage() {
             <div style={{ marginBottom: 8, color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
               {auction.category || 'General'}
             </div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 12 }}>{auction.title}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 600, marginBottom: 12 }}>{auction.title}</h1>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
               <span className={`status-badge status-${auction.status}`}>{auction.status}</span>
               <AuctionTimer endTime={auction.endTime} status={auction.status} />
@@ -140,7 +145,7 @@ export default function AuctionDetailPage() {
                   <div key={bid.id} className={`bid-row ${i === 0 ? 'top-bid' : ''}`}>
                     <div>
                       <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                        {i === 0 ? '🥇 ' : ''}Bidder #{bid.bidderId}
+                        {i === 0 ? 'Leading — ' : ''}Bidder #{bid.bidderId}
                       </div>
                       <div className="bidder">{new Date(bid.placedAt).toLocaleString()}</div>
                     </div>
@@ -156,7 +161,7 @@ export default function AuctionDetailPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className={`card ${flash ? 'bid-flash' : ''}`} style={{ transition: 'background 0.5s' }}>
             <div className="bid-label" style={{ marginBottom: 4 }}>Current Bid</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent-gold)', marginBottom: 4 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '2.5rem', fontWeight: 700, color: 'var(--accent-gold)', marginBottom: 4 }}>
               ${currentBid.toFixed(2)}
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -164,7 +169,7 @@ export default function AuctionDetailPage() {
             </div>
             {auction.highestBidderId && (
               <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                🏆 Highest bidder: #{auction.highestBidderId}
+                Highest bidder: #{auction.highestBidderId}
               </div>
             )}
           </div>
@@ -195,11 +200,11 @@ export default function AuctionDetailPage() {
                   className="btn btn-gold btn-full"
                   disabled={placing}
                 >
-                  {placing ? 'Placing bid...' : `🔨 Bid $${parseFloat(bidAmount || 0).toFixed(2)}`}
+                  {placing ? 'Placing bid...' : `Bid $${parseFloat(bidAmount || 0).toFixed(2)}`}
                 </button>
               </form>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 12, lineHeight: 1.5 }}>
-                ⚠️ Your bid amount will be frozen from your wallet immediately.
+                Your bid amount will be frozen from your wallet immediately.
               </p>
             </div>
           )}
@@ -212,9 +217,9 @@ export default function AuctionDetailPage() {
           )}
 
           {user?.role === 'SELLER' && (
-            <div className="card" style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+            <div className="card" style={{ background: 'var(--accent-gold-dim)', border: '1px solid rgba(212,175,55,0.3)' }}>
               <p style={{ fontSize: '0.875rem', color: 'var(--accent-gold)' }}>
-                🏪 You are viewing as a Seller. Only bidders can place bids.
+                You are viewing as a Seller. Only bidders can place bids.
               </p>
             </div>
           )}

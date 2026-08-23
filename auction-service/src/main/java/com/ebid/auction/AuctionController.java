@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -75,9 +76,14 @@ public class AuctionController {
     }
 
     // ─── Place a bid ─────────────────────────────────────────────────────────────
+    // @Transactional + the pessimistic-lock read below are what fix the race
+    // condition: concurrent requests for the SAME auction id now serialize on
+    // the DB row lock, so each one re-reads the true current bid instead of
+    // racing on a stale value. Requests for different auctions are unaffected.
+    @Transactional
     @PostMapping("/{id}/bid")
     public ResponseEntity<?> placeBid(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Optional<Auction> optAuction = auctionRepository.findById(id);
+        Optional<Auction> optAuction = auctionRepository.findByIdForUpdate(id);
         if (optAuction.isEmpty()) {
             return ResponseEntity.notFound().build();
         }

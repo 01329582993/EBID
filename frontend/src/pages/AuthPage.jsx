@@ -29,7 +29,7 @@ export default function AuthPage() {
         res = await register(form);
       }
       loginUser(res.data);
-      toast.success(`Welcome, ${res.data.username}! 🎉`);
+      toast.success(`Welcome, ${res.data.username}.`);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
@@ -103,8 +103,8 @@ export default function AuthPage() {
                 value={form.role}
                 onChange={handleChange}
               >
-                <option value="BIDDER">🏷️ Bidder — Place bids on auctions</option>
-                <option value="SELLER">🏪 Seller — Create & manage auctions</option>
+                <option value="BIDDER">Bidder — Place bids on auctions</option>
+                <option value="SELLER">Seller — Create & manage auctions</option>
               </select>
             </div>
           )}

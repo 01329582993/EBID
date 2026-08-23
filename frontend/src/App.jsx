@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
+import ErrorBoundary from './components/errorBoundary';
 import AuthPage from './pages/AuthPage';
 import HomePage from './pages/HomePage';
 import AuctionDetailPage from './pages/AuctionDetailPage';
@@ -37,23 +38,25 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#16181f',
-              color: '#f8fafc',
-              border: '1px solid rgba(255,255,255,0.08)',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '0.875rem',
-            },
-            success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
-            error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-          }}
-        />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AppRoutes />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: '#262626',
+                color: '#FDFBF7',
+                border: '1px solid rgba(212, 175, 55, 0.16)',
+                fontFamily: "'Inter', sans-serif",
+                fontSize: '0.875rem',
+              },
+              success: { iconTheme: { primary: '#D4AF37', secondary: '#1A1A1A' } },
+              error:   { iconTheme: { primary: '#8B0000', secondary: '#FDFBF7' } },
+            }}
+          />
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

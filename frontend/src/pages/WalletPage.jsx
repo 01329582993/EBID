@@ -4,7 +4,7 @@ import { getWallet, deposit, getTransactions } from '../api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
-const TX_ICONS = { DEPOSIT: '💚', FREEZE: '🔒', RELEASE: '🔓', PAYOUT: '💸', WITHDRAWAL: '📤' };
+const TX_LABELS = { DEPOSIT: 'DEP', FREEZE: 'FRZ', RELEASE: 'REL', PAYOUT: 'PAY', WITHDRAWAL: 'WD' };
 
 export default function WalletPage() {
   const { user } = useAuth();
@@ -42,7 +42,7 @@ export default function WalletPage() {
     setDepositing(true);
     try {
       await deposit({ userId: user.userId, amount });
-      toast.success(`$${amount.toFixed(2)} deposited! 💰`);
+      toast.success(`$${amount.toFixed(2)} deposited.`);
       setShowModal(false);
       setDepositAmount('');
       loadWallet();
@@ -71,7 +71,7 @@ export default function WalletPage() {
         </div>
         {parseFloat(wallet.frozenBalance || 0) > 0 && (
           <div className="wallet-frozen">
-            🔒 <strong>${parseFloat(wallet.frozenBalance).toFixed(2)}</strong> frozen in active bids
+            <strong>${parseFloat(wallet.frozenBalance).toFixed(2)}</strong> frozen in active bids
           </div>
         )}
         <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
@@ -112,7 +112,6 @@ export default function WalletPage() {
         <div className="section-title">Transaction History</div>
         {transactions.length === 0 ? (
           <div className="empty-state" style={{ padding: '32px' }}>
-            <div className="empty-state-icon">📄</div>
             <div className="empty-state-title">No transactions yet</div>
             <p>Deposit funds to get started</p>
           </div>
@@ -122,8 +121,8 @@ export default function WalletPage() {
               const isPositive = tx.amount > 0 || tx.type === 'DEPOSIT' || tx.type === 'RELEASE';
               return (
                 <div key={tx.id} className="transaction-item">
-                  <div className={`tx-icon tx-${tx.type}`}>
-                    {TX_ICONS[tx.type] || '💳'}
+                  <div className={`tx-icon tx-${tx.type}`} style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.5px' }}>
+                    {TX_LABELS[tx.type] || tx.type?.slice(0, 3)}
                   </div>
                   <div className="tx-info">
                     <div className="tx-desc">{tx.description || tx.type}</div>
@@ -145,7 +144,7 @@ export default function WalletPage() {
       {showModal && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
           <div className="modal">
-            <div className="modal-title">💰 Deposit Funds</div>
+            <div className="modal-title">Deposit Funds</div>
             <form onSubmit={handleDeposit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-group">
                 <label className="form-label">Amount ($)</label>

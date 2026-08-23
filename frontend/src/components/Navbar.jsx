@@ -13,7 +13,7 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <div className="navbar-brand" onClick={() => navigate('/')}>⚡ EBID</div>
+      <div className="navbar-brand" onClick={() => navigate('/')}>EBID</div>
 
       <div className="navbar-nav">
         {user ? (
@@ -30,7 +30,7 @@ export default function Navbar() {
               className="nav-btn nav-btn-ghost"
               onClick={() => navigate('/wallet')}
             >
-              💰 Wallet
+              Wallet
             </button>
             {user.role === 'SELLER' && (
               <button

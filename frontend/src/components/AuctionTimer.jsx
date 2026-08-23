@@ -35,7 +35,7 @@ export default function AuctionTimer({ endTime, status }) {
 
   return (
     <span className={`auction-timer ${isEndingSoon ? 'ending-soon' : ''}`}>
-      ⏱ {timeLeft}
+      {timeLeft}
     </span>
   );
 }
