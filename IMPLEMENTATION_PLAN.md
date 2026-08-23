@@ -52,11 +52,11 @@ This document presents the **Feature Audit** and **4-Person Engineering Team Wor
 
 ---
 
-### 👤 Member 4: Maliha (Lead — Frontend, Gateway & Verification) — [ASSIGNED / PENDING ⏳]
-- [ ] Update frontend API client (`api.js`) for JWT header propagation to all service endpoints.
-- [ ] Enhance React UI error boundaries to handle standard `ErrorDetails` payload from `@RestControllerAdvice`.
-- [ ] Configure Nginx Gateway rate-limiting (`limit_req_zone`) for DDOS protection on login and bidding routes.
-- [ ] Perform end-to-end load & concurrency verification (testing simultaneous bids on the same auction).
+### 👤 Member 4: Maliha (Lead — Frontend, Gateway & Verification) — [COMPLETED ✅]
+- [x] Update frontend API client (`api.js`, `authEvents.jsx`) for JWT header propagation and auth event listeners.
+- [x] Enhance React UI error boundaries (`errorBoundary.jsx`, `apiError.jsx`) to handle standard `ErrorDetails` payload from `@RestControllerAdvice`.
+- [x] Configure Nginx Gateway rate-limiting (`limit_req_zone`, `login_zone`, `bid_zone`, `limit_req_status 429`) for DDOS protection.
+- [x] Perform end-to-end load & concurrency verification (`load-tests/concurrency-test.js`) testing simultaneous bids, race conditions, and escrow freeze consistency.
 
 ---
 
