@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createAuction } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -6,10 +6,17 @@ import toast from 'react-hot-toast';
 
 const CATEGORIES = ['Electronics', 'Fashion', 'Art', 'Collectibles', 'Vehicles', 'Jewelry', 'Sports', 'General'];
 
+const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB — base64 inflates ~33%, keep well under typical column/body limits
+
 export default function CreateAuctionPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [imageMode, setImageMode] = useState('upload'); // 'upload' | 'url'
+  const [fileName, setFileName] = useState('');
+  const [fileIsPdf, setFileIsPdf] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const fileInputRef = useRef(null);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -19,11 +26,50 @@ export default function CreateAuctionPage() {
     imageUrl: '',
   });
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    setFileError('');
+    if (!file) return;
+
+    const allowed = ['image/png', 'image/jpeg', 'application/pdf'];
+    if (!allowed.includes(file.type)) {
+      setFileError('Only PNG, JPG, JPEG, or PDF files are allowed.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setFileError('File is too large (max 2MB). Use an image URL instead for larger files.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm(f => ({ ...f, imageUrl: reader.result }));
+      setFileName(file.name);
+      setFileIsPdf(file.type === 'application/pdf');
+    };
+    reader.onerror = () => setFileError('Could not read that file. Please try again.');
+    reader.readAsDataURL(file);
+  };
+
+  const clearFile = () => {
+    setFileName('');
+    setFileIsPdf(false);
+    setFileError('');
+    setForm(f => ({ ...f, imageUrl: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const switchMode = (mode) => {
+    setImageMode(mode);
+    clearFile();
+  };
+
   if (!user || user.role !== 'SELLER') {
     return (
       <div className="main-content">
         <div className="empty-state">
-          <div className="empty-state-icon">🚫</div>
           <div className="empty-state-title">Sellers Only</div>
           <p>Only accounts with the Seller role can create auctions.</p>
         </div>
@@ -50,7 +96,7 @@ export default function CreateAuctionPage() {
         endTime: end.toISOString().slice(0, 19), // LocalDateTime format
       };
       const res = await createAuction(payload);
-      toast.success('Auction created successfully! 🎉');
+      toast.success('Auction created successfully.');
       navigate(`/auction/${res.data.id}`);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create auction');
@@ -144,23 +190,80 @@ export default function CreateAuctionPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Image URL (optional)</label>
-            <input
-              id="auction-image-url"
-              name="imageUrl"
-              type="url"
-              className="form-input"
-              placeholder="https://example.com/image.jpg"
-              value={form.imageUrl}
-              onChange={handleChange}
-            />
+            <label className="form-label">Item Image (optional)</label>
+
+            <div className="tabs" style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                className={`tab-btn ${imageMode === 'upload' ? 'active' : ''}`}
+                onClick={() => switchMode('upload')}
+              >
+                Upload Image
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${imageMode === 'url' ? 'active' : ''}`}
+                onClick={() => switchMode('url')}
+              >
+                Paste URL
+              </button>
+            </div>
+
+            {imageMode === 'upload' ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  id="auction-image-file"
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Choose File
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {fileName || 'No file chosen'}
+                  </span>
+                  {fileName && (
+                    <button type="button" className="btn btn-outline btn-sm" onClick={clearFile}>Remove</button>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  PNG, JPG, JPEG, or PDF — max 2MB
+                </span>
+                {fileError && <div className="auth-error">{fileError}</div>}
+              </>
+            ) : (
+              <input
+                id="auction-image-url"
+                name="imageUrl"
+                type="url"
+                className="form-input"
+                placeholder="https://example.com/image.jpg"
+                value={form.imageUrl}
+                onChange={handleChange}
+              />
+            )}
           </div>
 
           {form.imageUrl && (
-            <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', maxHeight: 200 }}>
-              <img src={form.imageUrl} alt="Preview" style={{ width: '100%', objectFit: 'cover' }}
-                onError={(e) => { e.target.style.display = 'none'; }} />
-            </div>
+            fileIsPdf ? (
+              <div className="card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--accent-gold)' }}>PDF</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{fileName} attached</span>
+              </div>
+            ) : (
+              <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', maxHeight: 200, border: '1px solid var(--border)' }}>
+                <img src={form.imageUrl} alt="Preview" style={{ width: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.style.display = 'none'; }} />
+              </div>
+            )
           )}
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
@@ -171,7 +274,7 @@ export default function CreateAuctionPage() {
               className="btn btn-primary"
               disabled={loading}
             >
-              {loading ? 'Creating...' : '🚀 Launch Auction'}
+              {loading ? 'Creating...' : 'Launch Auction'}
             </button>
           </div>
         </form>
