@@ -34,7 +34,7 @@ services:
     build: ./wallet-service
     container_name: ebid-wallet-service
     ports:
-      - "8083:8083"
+      - "8084:8084"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/wallet_db
       - SPRING_DATASOURCE_USERNAME=postgres
@@ -52,7 +52,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/auction_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
-      - WALLET_SERVICE_URL=http://wallet-service:8083
+      - WALLET_SERVICE_URL=http://wallet-service:8084
       - AUTH_SERVICE_URL=http://auth-service:8081
     depends_on:
       db:

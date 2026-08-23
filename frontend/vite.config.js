@@ -9,25 +9,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api/auth': {
-        target: 'http://localhost:8081',
+      '/api': {
+        target: 'http://localhost:80',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/auth/, '')
-      },
-      '/api/auctions': {
-        target: 'http://localhost:8082',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/auctions/, '/auctions')
-      },
-      '/api/wallet': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/wallet/, '/wallet')
       },
       '/ws': {
-        target: 'http://localhost:8082',
+        target: 'http://localhost:80',
         ws: true,
-        changeOrigin: true
+        changeOrigin: true,
       }
     }
   }
