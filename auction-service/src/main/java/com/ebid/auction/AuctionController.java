@@ -77,8 +77,9 @@ public class AuctionController {
     // ─── Place a bid ─────────────────────────────────────────────────────────────
     @PostMapping("/{id}/bid")
     @CacheEvict(value = "activeAuctions", allEntries = true)
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> placeBid(@PathVariable Long id, @RequestBody BidRequestDto dto) {
-        Optional<Auction> optAuction = auctionRepository.findById(id);
+        Optional<Auction> optAuction = auctionRepository.findByIdForUpdate(id);
         if (optAuction.isEmpty()) {
             return ResponseEntity.notFound().build();
         }

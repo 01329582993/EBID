@@ -42,13 +42,14 @@ This document presents the **Feature Audit** and **4-Person Engineering Team Wor
 
 ---
 
-### 👤 Member 3: Alizah (Lead — Auction, JPQL & Caching) — [ASSIGNED / PENDING ⏳]
-- [ ] Refactor `AuctionController` to use DTOs (`CreateAuctionDto`, `BidRequestDto`).
-- [ ] Write custom JPQL aggregate & query methods in `AuctionRepository` and `BidRepository`:
+### 👤 Member 3: Alizah (Lead — Auction, JPQL & Caching) — [COMPLETED ✅]
+- [x] Refactor `AuctionController` to use DTOs (`CreateAuctionDto`, `BidRequestDto`).
+- [x] Write custom JPQL aggregate & query methods in `AuctionRepository` and `BidRepository`:
   - `@Query("SELECT MAX(b.amount) FROM Bid b WHERE b.auctionId = :auctionId")`
   - `@Query("SELECT a FROM Auction a WHERE a.status = :status AND a.endTime <= :now")`
-- [ ] Add composite database indexing on `auctions(status, endTime)` and `bids(auctionId, amount DESC)`.
-- [ ] Add Redis container service to `docker-compose.yml` and apply Spring `@Cacheable`.
+- [x] Add composite database indexing on `auctions(status, endTime)` and `bids(auctionId, amount DESC)`.
+- [x] Add Redis container service (`redis:7-alpine`) to `docker-compose.yml` and apply Spring `@Cacheable` and `@CacheEvict`.
+- [x] Add `GlobalExceptionHandler` to `auction-service` for structured JSON error maps.
 
 ---
 
