@@ -6,10 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import org.springframework.cache.annotation.CacheEvict;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -57,33 +57,28 @@ public class AuctionController {
 
     // ─── Create a new auction ────────────────────────────────────────────────────
     @PostMapping
-    public ResponseEntity<?> createAuction(@RequestBody Map<String, Object> body) {
+    @CacheEvict(value = "activeAuctions", allEntries = true)
+    public ResponseEntity<?> createAuction(@RequestBody CreateAuctionDto dto) {
         Auction auction = new Auction();
-        auction.setTitle(body.get("title").toString());
-        auction.setDescription(body.getOrDefault("description", "").toString());
-        auction.setSellerId(Long.valueOf(body.get("sellerId").toString()));
-        auction.setStartingPrice(new BigDecimal(body.get("startingPrice").toString()));
+        auction.setTitle(dto.getTitle());
+        auction.setDescription(dto.getDescription() != null ? dto.getDescription() : "");
+        auction.setSellerId(dto.getSellerId());
+        auction.setStartingPrice(dto.getStartingPrice());
         auction.setCurrentBid(auction.getStartingPrice());
         auction.setStartTime(LocalDateTime.now());
-        auction.setEndTime(LocalDateTime.parse(body.get("endTime").toString()));
+        auction.setEndTime(dto.getEndTime());
         auction.setStatus(AuctionStatus.ACTIVE);
-        auction.setCategory(body.getOrDefault("category", "General").toString());
-        if (body.containsKey("imageUrl")) {
-            auction.setImageUrl(body.get("imageUrl").toString());
-        }
+        auction.setCategory(dto.getCategory() != null ? dto.getCategory() : "General");
+        auction.setImageUrl(dto.getImageUrl());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(auctionRepository.save(auction));
     }
 
     // ─── Place a bid ─────────────────────────────────────────────────────────────
-    // @Transactional + the pessimistic-lock read below are what fix the race
-    // condition: concurrent requests for the SAME auction id now serialize on
-    // the DB row lock, so each one re-reads the true current bid instead of
-    // racing on a stale value. Requests for different auctions are unaffected.
-    @Transactional
     @PostMapping("/{id}/bid")
-    public ResponseEntity<?> placeBid(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Optional<Auction> optAuction = auctionRepository.findByIdForUpdate(id);
+    @CacheEvict(value = "activeAuctions", allEntries = true)
+    public ResponseEntity<?> placeBid(@PathVariable Long id, @RequestBody BidRequestDto dto) {
+        Optional<Auction> optAuction = auctionRepository.findById(id);
         if (optAuction.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -97,15 +92,17 @@ public class AuctionController {
             return ResponseEntity.badRequest().body(Map.of("error", "Auction has ended"));
         }
 
-        Long bidderId = Long.valueOf(body.get("bidderId").toString());
-        BigDecimal bidAmount = new BigDecimal(body.get("amount").toString());
+        Long bidderId = dto.getBidderId();
+        BigDecimal bidAmount = dto.getAmount();
 
         if (bidderId.equals(auction.getSellerId())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Seller cannot bid on own auction"));
         }
-        if (bidAmount.compareTo(auction.getCurrentBid()) <= 0) {
+        BigDecimal maxBid = bidRepository.findMaxBidAmount(id);
+        BigDecimal currentBid = maxBid != null ? maxBid : auction.getStartingPrice();
+        if (bidAmount.compareTo(currentBid) <= 0) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Bid must be higher than current bid of $" + auction.getCurrentBid()));
+                    "error", "Bid must be higher than current bid of $" + currentBid));
         }
 
         // Freeze funds for new bidder via wallet-service
@@ -169,34 +166,33 @@ public class AuctionController {
 
     // ─── Scheduled: close expired auctions and trigger payout ───────────────────
     @Scheduled(fixedDelay = 10000) // every 10 seconds
+    @CacheEvict(value = "activeAuctions", allEntries = true)
     public void closeExpiredAuctions() {
-        List<Auction> activeAuctions = auctionRepository.findByStatus(AuctionStatus.ACTIVE);
-        for (Auction auction : activeAuctions) {
-            if (LocalDateTime.now().isAfter(auction.getEndTime())) {
-                auction.setStatus(AuctionStatus.ENDED);
-                auctionRepository.save(auction);
+        List<Auction> expiredAuctions = auctionRepository.findExpiredAuctions(AuctionStatus.ACTIVE, LocalDateTime.now());
+        for (Auction auction : expiredAuctions) {
+            auction.setStatus(AuctionStatus.ENDED);
+            auctionRepository.save(auction);
 
-                // If there was a winner, trigger payout
-                if (auction.getHighestBidderId() != null) {
-                    try {
-                        Map<String, Object> payoutRequest = new HashMap<>();
-                        payoutRequest.put("fromUserId", auction.getHighestBidderId());
-                        payoutRequest.put("toUserId", auction.getSellerId());
-                        payoutRequest.put("amount", auction.getCurrentBid());
-                        restTemplate.postForObject(walletServiceUrl + "/wallet/payout", payoutRequest, Map.class);
-                    } catch (Exception e) {
-                        // log payout failure
-                    }
+            // If there was a winner, trigger payout
+            if (auction.getHighestBidderId() != null) {
+                try {
+                    Map<String, Object> payoutRequest = new HashMap<>();
+                    payoutRequest.put("fromUserId", auction.getHighestBidderId());
+                    payoutRequest.put("toUserId", auction.getSellerId());
+                    payoutRequest.put("amount", auction.getCurrentBid());
+                    restTemplate.postForObject(walletServiceUrl + "/wallet/payout", payoutRequest, Map.class);
+                } catch (Exception e) {
+                    // log payout failure
                 }
-
-                // Broadcast auction ended
-                Map<String, Object> endUpdate = new HashMap<>();
-                endUpdate.put("auctionId", auction.getId());
-                endUpdate.put("status", "ENDED");
-                endUpdate.put("winnerId", auction.getHighestBidderId());
-                endUpdate.put("finalPrice", auction.getCurrentBid());
-                messagingTemplate.convertAndSend("/topic/auction/" + auction.getId(), endUpdate);
             }
+
+            // Broadcast auction ended
+            Map<String, Object> endUpdate = new HashMap<>();
+            endUpdate.put("auctionId", auction.getId());
+            endUpdate.put("status", "ENDED");
+            endUpdate.put("winnerId", auction.getHighestBidderId());
+            endUpdate.put("finalPrice", auction.getCurrentBid());
+            messagingTemplate.convertAndSend("/topic/auction/" + auction.getId(), endUpdate);
         }
     }
 }

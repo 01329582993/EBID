@@ -22,4 +22,9 @@ frontend/.vite/
 
 # Docker volumes
 ebid-db-data/
-node_modules
+
+# Logs and temp files
+*_logs.txt
+auction_service_logs2.txt
+git_status_clean.txt
+
