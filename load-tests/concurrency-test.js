@@ -93,7 +93,8 @@ async function main() {
   const bidders = [];
   for (let i = 0; i < NUM_BIDDERS; i++) {
     const u = await registerOrLogin(`loadtest_bidder_${i}`, `bidder${i}@loadtest.local`, 'Passw0rd!1', 'BIDDER');
-    await req('POST', '/api/wallet/wallet/deposit', { userId: u.userId, amount: DEPOSIT_AMOUNT }, u.token);
+    const dep = await req('POST', '/api/wallet/wallet/deposit', { userId: u.userId, amount: DEPOSIT_AMOUNT }, u.token);
+    console.log(`loadtest_bidder_${i}: deposit ($${DEPOSIT_AMOUNT}) -> status ${dep.status}`, dep.data || '');
     bidders.push(u);
   }
 
